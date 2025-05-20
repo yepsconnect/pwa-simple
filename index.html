@@ -216,7 +216,7 @@
     />
 
     <script>
-      // VAPID Public Key (замените на ваш полный ключ)
+      // Ваш VAPID Public Key (должен совпадать с серверным)
       const vapidPublicKey =
         "BPil4UBbvS9ajjCsth2NGAbmX-Sd1ZffenpPJ7U4bxmkG0auFNd-Vz_NAKDhRd7Rt7hLggWlHmXAfdM7_ZiIKDE";
 
@@ -224,49 +224,67 @@
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
           .register("sw.js")
-          .then(() => console.log("Service Worker зарегистрирован"))
-          .catch((err) => console.error("Ошибка SW:", err));
+          .then((registration) => {
+            console.log("ServiceWorker зарегистрирован");
+            return registration.pushManager.getSubscription();
+          })
+          .then((subscription) => {
+            if (subscription) {
+              console.log("Уже подписаны:", subscription);
+              return subscription;
+            }
+            return subscribeToPush();
+          })
+          .catch((err) => console.error("Ошибка:", err));
       }
 
-      // Запрос разрешения и регистрация для push-уведомлений
-      async function enablePush() {
-        if (!("Notification" in window)) {
-          alert("Ваш браузер не поддерживает уведомления!");
-          return;
-        }
-
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          alert("Разрешение не получено!");
-          return;
-        }
-
+      // Подписка на push-уведомления
+      async function subscribeToPush() {
         const reg = await navigator.serviceWorker.ready;
         const subscription = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         });
 
-        // Отправляем подписку на сервер Box One
-        await fetch("https://dkpuah.box.one/pwa/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(subscription),
-        });
-
-        alert("Push-уведомления включены!");
+        // Отправляем подписку на сервер
+        await sendSubscriptionToServer(subscription);
+        console.log("Подписка отправлена на сервер");
+        return subscription;
       }
 
-      // Конвертирует Base64 в Uint8Array (нужно для VAPID)
+      // Отправка подписки на сервер
+      async function sendSubscriptionToServer(subscription) {
+        const response = await fetch(
+          "https://dkpush.boxt.one/api/pwa/subscribe",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              endpoint: subscription.endpoint,
+              keys: {
+                p256dh: Array.from(
+                  new Uint8Array(subscription.getKey("p256dh"))
+                ),
+                auth: Array.from(new Uint8Array(subscription.getKey("auth"))),
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Ошибка отправки подписки");
+        }
+        return response.json();
+      }
+
+      // Конвертация VAPID-ключа
       function urlBase64ToUint8Array(base64String) {
         const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
         const base64 = (base64String + padding)
           .replace(/-/g, "+")
           .replace(/_/g, "/");
-
         const rawData = atob(base64);
         const outputArray = new Uint8Array(rawData.length);
-
         for (let i = 0; i < rawData.length; ++i) {
           outputArray[i] = rawData.charCodeAt(i);
         }
