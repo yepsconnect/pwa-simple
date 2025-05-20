@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       serviceWorkerRegistration = await navigator.serviceWorker.register(
         "sw.js"
       );
-      console.log("Service Worker зарегистрирован");
 
       pushSubscription =
         await serviceWorkerRegistration.pushManager.getSubscription();
@@ -57,7 +56,6 @@ async function registerDevice() {
 
     showStatus("Устройство успешно зарегистрировано!", "success");
     updateUI(true, true);
-    console.log("Подписка:", pushSubscription);
   } catch (error) {
     console.error("Ошибка регистрации:", error);
     showStatus("Ошибка регистрации: " + error.message, "error");

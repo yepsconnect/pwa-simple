@@ -1,5 +1,4 @@
 function showNotification(title, body) {
-  console.log("[Service Worker] Показываем уведомление:", title, body);
   return self.registration.showNotification(title, {
     body: body,
     icon: "icon.png",
@@ -8,15 +7,11 @@ function showNotification(title, body) {
 }
 
 self.addEventListener("push", (event) => {
-  console.log("[Service Worker] Получено push-уведомление", event);
-
   let data = {};
   try {
     data = event.data.json();
-    console.log("Push-данные (JSON):", data);
   } catch (e) {
     data = { title: "Новое уведомление", body: event.data.text() };
-    console.log("Push-данные (текст):", data);
   }
 
   event.waitUntil(
@@ -28,8 +23,7 @@ self.addEventListener("push", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
-  console.log("[Service Worker] Клик по уведомлению", event.notification);
-  event.notification.close(); // закрываем уведомление
+  event.notification.close();
 
   event.waitUntil(
     clients.openWindow("https://yepsconnect.github.io/pwa-simple/")
