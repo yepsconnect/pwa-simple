@@ -1,191 +1,29 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>PWA с Push</title>
+    <title>PWA</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="manifest" href="manifest.json" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 20px;
-        text-align: center;
-      }
-      button {
-        background-color: #4caf50;
-        border: none;
-        color: white;
-        padding: 10px 20px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 10px 5px;
-        cursor: pointer;
-        border-radius: 5px;
-      }
-      button:disabled {
-        background-color: #cccccc;
-        cursor: not-allowed;
-      }
-      .status {
-        margin-top: 20px;
-        padding: 10px;
-        border-radius: 5px;
-      }
-      .success {
-        background-color: #dff0d8;
-        color: #3c763d;
-      }
-      .error {
-        background-color: #f2dede;
-        color: #a94442;
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <h1>PWA с Push-уведомлениями</h1>
-
-    <div>
-      <button id="enableBtn" onclick="enableNotifications()">
+  <body class="p-2">
+    <div class="flex flex-col items-start gap-2 max-w-5xl mx-auto w-full">
+      <h1 class="text-2xl font-bold">PWA</h1>
+      <button
+        class="p-2 border rounded active:scale-95 hover:bg-gray-100 cursor-pointer"
+        onclick="enableNotifications()"
+      >
         Разрешить уведомления
       </button>
-      <button id="registerBtn" onclick="registerDevice()" disabled>
+      <button
+        class="p-2 border rounded active:scale-95 hover:bg-gray-100 cursor-pointer"
+        onclick="registerDevice()"
+        disabled
+      >
         Зарегистрировать устройство
       </button>
     </div>
-
     <div id="status" class="status"></div>
-
-    <script>
-      const vapidPublicKey =
-        "BPil4UBbvS9ajjCsth2NGAbmX-Sd1ZffenpPJ7U4bxmkG0auFNd-Vz_NAKDhRd7Rt7hLggWlHmXAfdM7_ZiIKDE";
-      let serviceWorkerRegistration;
-      let pushSubscription;
-
-      document.addEventListener("DOMContentLoaded", async () => {
-        if ("serviceWorker" in navigator) {
-          try {
-            serviceWorkerRegistration = await navigator.serviceWorker.register(
-              "sw.js"
-            );
-            console.log("Service Worker зарегистрирован");
-
-            pushSubscription =
-              await serviceWorkerRegistration.pushManager.getSubscription();
-            if (pushSubscription) {
-              updateUI(true, true);
-              showStatus("У вас уже есть активная подписка", "success");
-            }
-          } catch (error) {
-            console.error("Ошибка регистрации Service Worker:", error);
-            showStatus("Ошибка регистрации Service Worker", "error");
-          }
-        } else {
-          showStatus("Ваш браузер не поддерживает Service Worker", "error");
-        }
-      });
-
-      async function enableNotifications() {
-        try {
-          const permission = await Notification.requestPermission();
-          if (permission === "granted") {
-            showStatus("Разрешение на уведомления получено", "success");
-            document.getElementById("registerBtn").disabled = false;
-            document.getElementById("enableBtn").disabled = true;
-          } else {
-            showStatus("Разрешение не получено", "error");
-          }
-        } catch (error) {
-          console.error("Ошибка запроса разрешения:", error);
-          showStatus("Ошибка запроса разрешения", "error");
-        }
-      }
-
-      async function registerDevice() {
-        try {
-          if (!serviceWorkerRegistration) {
-            throw new Error("Service Worker не зарегистрирован");
-          }
-
-          pushSubscription =
-            await serviceWorkerRegistration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-            });
-
-          const response = await sendSubscriptionToServer(pushSubscription);
-
-          showStatus("Устройство успешно зарегистрировано!", "success");
-          updateUI(true, true);
-          console.log("Подписка:", pushSubscription);
-        } catch (error) {
-          console.error("Ошибка регистрации:", error);
-          showStatus("Ошибка регистрации: " + error.message, "error");
-        }
-      }
-
-      async function sendSubscriptionToServer(subscription) {
-        const p256dh = btoa(
-          String.fromCharCode.apply(
-            null,
-            new Uint8Array(subscription.getKey("p256dh"))
-          )
-        );
-
-        const auth = btoa(
-          String.fromCharCode.apply(
-            null,
-            new Uint8Array(subscription.getKey("auth"))
-          )
-        );
-
-        const response = await fetch(
-          "https://dkpush.boxt.one/api/pwa/subscribe",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              endpoint: subscription.endpoint,
-              keys: {
-                p256dh: p256dh,
-                auth: auth,
-              },
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`Ошибка сервера: ${error}`);
-        }
-        return response.json();
-      }
-
-      function updateUI(notificationsEnabled, deviceRegistered) {
-        document.getElementById("enableBtn").disabled = notificationsEnabled;
-        document.getElementById("registerBtn").disabled = deviceRegistered;
-      }
-
-      function showStatus(message, type) {
-        const statusDiv = document.getElementById("status");
-        statusDiv.textContent = message;
-        statusDiv.className = "status " + type;
-      }
-
-      function urlBase64ToUint8Array(base64String) {
-        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-        const base64 = (base64String + padding)
-          .replace(/-/g, "+")
-          .replace(/_/g, "/");
-        const rawData = atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-          outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-      }
-    </script>
+    <script src="./main.js"></script>
   </body>
 </html>
