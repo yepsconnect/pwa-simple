@@ -59,13 +59,11 @@
     <div id="status" class="status"></div>
 
     <script>
-      // Ваш VAPID Public Key
       const vapidPublicKey =
         "BPil4UBbvS9ajjCsth2NGAbmX-Sd1ZffenpPJ7U4bxmkG0auFNd-Vz_NAKDhRd7Rt7hLggWlHmXAfdM7_ZiIKDE";
       let serviceWorkerRegistration;
       let pushSubscription;
 
-      // Инициализация при загрузке страницы
       document.addEventListener("DOMContentLoaded", async () => {
         if ("serviceWorker" in navigator) {
           try {
@@ -74,7 +72,6 @@
             );
             console.log("Service Worker зарегистрирован");
 
-            // Проверяем существующую подписку
             pushSubscription =
               await serviceWorkerRegistration.pushManager.getSubscription();
             if (pushSubscription) {
@@ -90,7 +87,6 @@
         }
       });
 
-      // 1. Запрос разрешения на уведомления
       async function enableNotifications() {
         try {
           const permission = await Notification.requestPermission();
@@ -107,7 +103,6 @@
         }
       }
 
-      // 2. Регистрация устройства для push-уведомлений
       async function registerDevice() {
         try {
           if (!serviceWorkerRegistration) {
@@ -120,7 +115,6 @@
               applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
             });
 
-          // Отправляем подписку на сервер
           const response = await sendSubscriptionToServer(pushSubscription);
 
           showStatus("Устройство успешно зарегистрировано!", "success");
@@ -132,9 +126,7 @@
         }
       }
 
-      // Отправка подписки на сервер
       async function sendSubscriptionToServer(subscription) {
-        // Конвертируем Uint8Array в base64 строку
         const p256dh = btoa(
           String.fromCharCode.apply(
             null,
@@ -157,8 +149,8 @@
             body: JSON.stringify({
               endpoint: subscription.endpoint,
               keys: {
-                p256dh: p256dh, // Теперь это строка в base64
-                auth: auth, // Теперь это строка в base64
+                p256dh: p256dh,
+                auth: auth,
               },
             }),
           }
@@ -171,20 +163,17 @@
         return response.json();
       }
 
-      // Обновление интерфейса
       function updateUI(notificationsEnabled, deviceRegistered) {
         document.getElementById("enableBtn").disabled = notificationsEnabled;
         document.getElementById("registerBtn").disabled = deviceRegistered;
       }
 
-      // Показать статус
       function showStatus(message, type) {
         const statusDiv = document.getElementById("status");
         statusDiv.textContent = message;
         statusDiv.className = "status " + type;
       }
 
-      // Конвертация VAPID-ключа
       function urlBase64ToUint8Array(base64String) {
         const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
         const base64 = (base64String + padding)

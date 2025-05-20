@@ -1,18 +1,15 @@
-// Функция для показа уведомления
 function showNotification(title, body) {
   console.log("[Service Worker] Показываем уведомление:", title, body);
   return self.registration.showNotification(title, {
     body: body,
-    icon: "icon.png", // путь к иконке
-    vibrate: [200, 100, 200], // вибрация (на поддерживаемых устройствах)
+    icon: "icon.png",
+    vibrate: [200, 100, 200],
   });
 }
 
-// Обработка входящего push-сообщения
 self.addEventListener("push", (event) => {
   console.log("[Service Worker] Получено push-уведомление", event);
 
-  // Данные могут приходить в разных форматах (текст или JSON)
   let data = {};
   try {
     data = event.data.json();
@@ -22,7 +19,6 @@ self.addEventListener("push", (event) => {
     console.log("Push-данные (текст):", data);
   }
 
-  // Ждем, пока уведомление будет показано
   event.waitUntil(
     showNotification(
       data.title || "Уведомление",
@@ -31,13 +27,11 @@ self.addEventListener("push", (event) => {
   );
 });
 
-// Обработка клика по уведомлению
 self.addEventListener("notificationclick", (event) => {
   console.log("[Service Worker] Клик по уведомлению", event.notification);
   event.notification.close(); // закрываем уведомление
 
-  // Открываем страницу при клике
   event.waitUntil(
-    clients.openWindow("https://yepsconnect.github.io/pwa-simple/") // замените на ваш URL
+    clients.openWindow("https://yepsconnect.github.io/pwa-simple/")
   );
 });
